@@ -12,6 +12,5 @@ enum wal_entry_flags:uint (bit_flags) {
 struct wal_header {
   flags: Flags = 0;
   size: uint;
-  version: short
   checksum: uint;
 }
