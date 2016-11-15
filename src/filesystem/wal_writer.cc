@@ -7,48 +7,26 @@
 #include "log.h"
 #include "filesystem/wal_writer_utils.h"
 #include "filesystem/wal_writer_node.h"
+#include "filesystem/wal_head_file_functor.h"
+
 
 namespace smf {
 
-
-/// \brief used from a subscriber to find the last file on the file system
-/// according to our naming scheme of `file`_`size`_`date`, i.e.:
-/// for a given directory.
-/// Given `/tmp/smf/wal` as a directory, we'll find files that looks like this
-/// "smf_s_2345234_d_23421234.wal"
-///
-struct head_file_functor {
-  file_visitor(file _f)
-    : f(std::move(_f))
-    , listing(
-        f.list_directory([this](directory_entry de) { return visit(de); })) {}
-
-  future<> visit(directory_entry de) {
-    static const boost::regex file_re("(\\d+)_(\\d+)\.wal");
-    if(de.type && de.type == directory_entry_type::regular
-       && regex_match(de.name.c_str(), file_re)) {
-      if(de.name > last_file) {
-        last_file = de.name;
-      }
-    }
-    return make_ready_future<>();
-  }
-
-  future<> close() { return listing.done(); }
-
-  sstring last_file;
-  file f;
-  subscription<directory_entry> listing;
-
-}
-
-future<>
-wal_writer::open() {
-  return engine()
-    .open_directory(directory_)
+future<> wal_writer::open() {
+  return open_directory(directory_)
     .then([this](file f) {
-      auto l = make_lw_shared<file_visitor>(std::move(f));
-      return l->close();
+      auto l = make_lw_shared<wal_head_file_functor>(std::move(f));
+      return l->close().then([l, this]() mutable {
+        return open_file_dma(l->last_file, open_flags::ro)
+          .then([this, auto prefix = l->name_parser.prefix](file last) {
+            auto lastf = make_lw_shared<file>(std::move(last));
+            return lastf->size().then([this, prefix, lastf](uint64_t size) {
+              auto filename = prefix + to_sstring(size);
+              current_ = std::make_unique<wal_writer_node>(filename);
+              return lastf->close();
+            });
+          });
+      });
     });
 }
 

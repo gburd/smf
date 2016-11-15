@@ -1,14 +1,16 @@
 #pragma once
 
 namespace smf {
+
 class wal_writer_node {
   wal_writer_node(sstring filename,
+                  uint64_t epoch,
                   const uint64_t file_size = wal_file_size_aligned())
-    : name(filename), max_size(file_size) {
+    : name(filename), max_size(file_size), epoch_(epoch) {
     file_output_stream_options opts;
     opts.buffer_size = file_size;
     opts.preallocation_size = opts.buffer_size;
-    fstream = make_file_output_stream(filename, opts);
+    fstream = make_file_output_stream(name, opts);
   }
   future<> append(temporary_buffer<char> &&buf) {
     if(buf.size() > spae_left()) {
@@ -37,9 +39,11 @@ class wal_writer_node {
   const uint64_t max_size;
 
   private:
+  uint64_t epoch_;
+  output_stream<char> fstream_;
+
   uint64_t current_size_ = 0;
   bool closed_ = false;
-  output_stream<char> fstream_;
 };
 
 } // namespace smf
