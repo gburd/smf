@@ -1,6 +1,8 @@
 #pragma once
 // seastar
 #include <core/fstream.hh>
+// generated
+#include "flatbuffers/wal_generated.h"
 // smf
 #include "filesystem/wal_writer_utils.h"
 

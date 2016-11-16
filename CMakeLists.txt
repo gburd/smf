@@ -34,6 +34,7 @@ set(FLATBUFFERS_FILES
   ${PROJECT_SOURCE_DIR}/src/flatbuffers/rpc.fbs
   ${PROJECT_SOURCE_DIR}/src/flatbuffers/raft.fbs
   ${PROJECT_SOURCE_DIR}/src/flatbuffers/chain_replication.fbs
+  ${PROJECT_SOURCE_DIR}/src/flatbuffers/wal.fbs
   )
 
 # build the RPC Types
